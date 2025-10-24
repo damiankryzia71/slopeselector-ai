@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   brand: string;
   description: string;
+  priceRange: string;
   pros: string[];
   cons: string[];
   highlight: string;
@@ -32,4 +33,4 @@ export interface HistoryItem {
   created_at: string;
 }
 
-export type AppView = "recommend" | "history";
+export type AppPage = "home" | "results" | "history";

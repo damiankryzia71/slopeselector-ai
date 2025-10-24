@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Snowflake, History, Loader2, AlertCircle, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
-import { ApiResponse, HistoryItem, AppView, Product, Category } from './types';
+import { Snowflake, History, Loader2, AlertCircle, ExternalLink, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { ApiResponse, HistoryItem, Product, Category } from './types';
 import { getRecommendations, getHistory, getRecommendationById } from './services/apiService';
 
 // Generate a unique user ID and store it in localStorage
@@ -14,7 +14,7 @@ const getUserId = (): string => {
 };
 
 function App() {
-  const [currentView, setCurrentView] = useState<AppView>('recommend');
+  const [currentPage, setCurrentPage] = useState<'home' | 'results' | 'history'>('home');
   const [prompt, setPrompt] = useState('');
   const [results, setResults] = useState<ApiResponse | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -24,10 +24,10 @@ function App() {
 
   // Load history when switching to history view
   useEffect(() => {
-    if (currentView === 'history' && history.length === 0) {
+    if (currentPage === 'history' && history.length === 0) {
       loadHistory();
     }
-  }, [currentView]);
+  }, [currentPage]);
 
   const loadHistory = async () => {
     try {
@@ -48,8 +48,9 @@ function App() {
     try {
       const response = await getRecommendations(prompt, userId);
       setResults(response);
+      setCurrentPage('results');
       // Refresh history if we're on the history view
-      if (currentView === 'history') {
+      if (currentPage === 'history') {
         loadHistory();
       }
     } catch (err) {
@@ -66,7 +67,7 @@ function App() {
     try {
       const response = await getRecommendationById(item.id);
       setResults(response);
-      setCurrentView('recommend');
+      setCurrentPage('results');
     } catch (err) {
       setError('Failed to load recommendation details');
     } finally {
@@ -88,9 +89,13 @@ function App() {
           {/* Navigation */}
           <div className="flex justify-center gap-4 mt-6">
             <button
-              onClick={() => setCurrentView('recommend')}
+              onClick={() => {
+                setCurrentPage('home');
+                setPrompt(''); // Clear the search box
+                setError(null); // Clear any error messages
+              }}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                currentView === 'recommend'
+                currentPage === 'home'
                   ? 'bg-cyan-500 text-black shadow-lg'
                   : 'bg-white/10 text-white hover:bg-white/20'
               }`}
@@ -98,9 +103,9 @@ function App() {
               Get Recommendations
             </button>
             <button
-              onClick={() => setCurrentView('history')}
+              onClick={() => setCurrentPage('history')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                currentView === 'history'
+                currentPage === 'history'
                   ? 'bg-cyan-500 text-black shadow-lg'
                   : 'bg-white/10 text-white hover:bg-white/20'
               }`}
@@ -113,51 +118,28 @@ function App() {
 
         {/* Main Content */}
         <main className="max-w-6xl mx-auto">
-          {currentView === 'recommend' ? (
-            <div className="space-y-8">
-              {/* Prompt Input */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                  <label htmlFor="prompt" className="block text-white font-semibold mb-3">
-                    Describe your gear needs:
-                  </label>
-                  <textarea
-                    id="prompt"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="e.g., I'm an intermediate skier looking for all-mountain skis for Colorado trips. I prefer stability and want something that handles both groomed runs and light powder..."
-                    className="w-full h-32 bg-white/10 backdrop-blur-sm rounded-lg p-4 text-white placeholder-slate-400 border border-white/20 resize-none focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading || !prompt.trim()}
-                    className="mt-4 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-black font-bold rounded-lg px-6 py-3 transform hover:-translate-y-0.5 transition-all disabled:transform-none"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="inline h-4 w-4 mr-2 animate-spin" />
-                        Getting Recommendations...
-                      </>
-                    ) : (
-                      'Get Recommendations'
-                    )}
-                  </button>
-                </div>
-              </form>
-
-              {/* Error Message */}
-              {error && (
-                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 flex items-center gap-2 text-red-200">
-                  <AlertCircle className="h-5 w-5" />
-                  {error}
-                </div>
-              )}
-
-              {/* Results */}
-              {results && <ResultsDisplay results={results} />}
-            </div>
-          ) : (
+          {currentPage === 'home' && (
+            <HomePage 
+              prompt={prompt}
+              setPrompt={setPrompt}
+              handleSubmit={handleSubmit}
+              isLoading={isLoading}
+              error={error}
+            />
+          )}
+          
+          {currentPage === 'results' && results && (
+            <ResultsPage 
+              results={results}
+              onBack={() => {
+                setCurrentPage('home');
+                setPrompt(''); // Clear the search box
+                setError(null); // Clear any error messages
+              }}
+            />
+          )}
+          
+          {currentPage === 'history' && (
             <HistoryView 
               history={history} 
               onItemClick={handleHistoryItemClick}
@@ -166,6 +148,117 @@ function App() {
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+// Home Page Component
+function HomePage({ 
+  prompt, 
+  setPrompt, 
+  handleSubmit, 
+  isLoading, 
+  error 
+}: { 
+  prompt: string;
+  setPrompt: (value: string) => void;
+  handleSubmit: (e: React.FormEvent) => void;
+  isLoading: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <h2 className="text-3xl font-bold text-white mb-4">Find Your Perfect Gear</h2>
+        <p className="text-slate-300 text-lg max-w-2xl mx-auto">
+          Describe your skiing or snowboarding needs and get personalized recommendations 
+          with detailed specs, price ranges, and honest pros/cons.
+        </p>
+      </div>
+
+      {/* Prompt Input */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/20">
+          <label htmlFor="prompt" className="block text-white font-semibold mb-4 text-lg">
+            What gear are you looking for?
+          </label>
+          <textarea
+            id="prompt"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="e.g., I'm an intermediate skier looking for all-mountain skis for Colorado trips. I prefer stability and want something that handles both groomed runs and light powder. My budget is around $500-800..."
+            className="w-full h-40 bg-white/10 backdrop-blur-sm rounded-lg p-6 text-white placeholder-slate-400 border border-white/20 resize-none focus:outline-none focus:ring-2 focus:ring-cyan-400 text-lg"
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !prompt.trim()}
+            className="mt-6 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-black font-bold rounded-lg px-8 py-4 text-lg transform hover:-translate-y-0.5 transition-all disabled:transform-none"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="inline h-5 w-5 mr-3 animate-spin" />
+                Getting Recommendations...
+              </>
+            ) : (
+              'Get My Recommendations'
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 flex items-center gap-2 text-red-200">
+          <AlertCircle className="h-5 w-5" />
+          {error}
+        </div>
+      )}
+
+      {/* Features */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20 text-center">
+          <Snowflake className="h-8 w-8 text-cyan-400 mx-auto mb-3" />
+          <h3 className="text-white font-semibold mb-2">AI-Powered</h3>
+          <p className="text-slate-300 text-sm">Advanced AI analyzes your needs and preferences</p>
+        </div>
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20 text-center">
+          <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-3" />
+          <h3 className="text-white font-semibold mb-2">Detailed Specs</h3>
+          <p className="text-slate-300 text-sm">Key specifications and technical details</p>
+        </div>
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20 text-center">
+          <ExternalLink className="h-8 w-8 text-blue-400 mx-auto mb-3" />
+          <h3 className="text-white font-semibold mb-2">Price Ranges</h3>
+          <p className="text-slate-300 text-sm">Realistic pricing to help with budgeting</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Results Page Component
+function ResultsPage({ 
+  results, 
+  onBack 
+}: { 
+  results: ApiResponse;
+  onBack: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors mb-6"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Search
+      </button>
+
+      {/* Results */}
+      <ResultsDisplay results={results} />
     </div>
   );
 }
@@ -181,7 +274,7 @@ function ResultsDisplay({ results }: { results: ApiResponse }) {
         )}
         <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-3 mt-4 max-w-2xl mx-auto">
           <p className="text-blue-200 text-sm">
-            💡 <strong>Note:</strong> Product names are clear and searchable. Each recommendation includes key specs and concise pros/cons for easy comparison. Use the search suggestions to find products at REI, Evo, Backcountry, or your local ski shop.
+            💡 <strong>Note:</strong> Product names are clear and searchable. Each recommendation includes price ranges, key specs, and concise pros/cons for easy comparison. Use the search suggestions to find products at REI, Evo, Backcountry, or your local ski shop.
           </p>
         </div>
       </div>
@@ -214,14 +307,21 @@ function CategorySection({ category }: { category: Category }) {
 function ProductCard({ product }: { product: Product }) {
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20 p-4 hover:bg-white/10 transition-all">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h4 className="font-bold text-white">{product.name}</h4>
-          <p className="text-slate-300 text-sm">{product.brand}</p>
+      <div className="mb-3">
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="font-bold text-white text-lg leading-tight">{product.name}</h4>
         </div>
-        <span className="bg-cyan-500 text-black text-xs font-bold px-2 py-1 rounded">
-          {product.highlight}
-        </span>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-slate-300 text-sm">{product.brand}</p>
+            {product.priceRange && (
+              <p className="text-green-400 text-sm font-semibold mt-1">{product.priceRange}</p>
+            )}
+          </div>
+          <span className="bg-slate-700/50 text-slate-200 text-xs font-medium px-3 py-1 rounded-full border border-slate-600/50">
+            {product.highlight}
+          </span>
+        </div>
       </div>
       
       <p className="text-slate-300 text-sm mb-3 font-medium">{product.description}</p>
