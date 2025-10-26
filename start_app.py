@@ -13,9 +13,10 @@ import signal
 def start_backend():
     """Start the FastAPI backend server"""
     print("🚀 Starting backend server...")
-    os.chdir("backend")
+    backend_dir = os.path.join(os.getcwd(), "backend")
+    print(f"Backend directory: {backend_dir}")
     try:
-        subprocess.run([sys.executable, "run_server.py"], check=True)
+        subprocess.run([sys.executable, "run_server.py"], cwd=backend_dir, check=True)
     except KeyboardInterrupt:
         print("\n🛑 Backend server stopped")
     except Exception as e:
@@ -24,9 +25,10 @@ def start_backend():
 def start_frontend():
     """Start the React frontend server"""
     print("🚀 Starting frontend server...")
-    os.chdir("frontend/slopeselector")
+    frontend_dir = os.path.join(os.getcwd(), "frontend", "slopeselector")
+    print(f"Frontend directory: {frontend_dir}")
     try:
-        subprocess.run(["npm", "run", "dev"], check=True)
+        subprocess.run("npm run dev", cwd=frontend_dir, shell=True, check=True)
     except KeyboardInterrupt:
         print("\n🛑 Frontend server stopped")
     except Exception as e:

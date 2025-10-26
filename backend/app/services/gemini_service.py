@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 # Your API key should be loaded from environment variables
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
-API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={API_KEY}"
+API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={API_KEY}"
 
 # The JSON schema to enforce
 GENERATION_CONFIG = {
